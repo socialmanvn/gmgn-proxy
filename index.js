@@ -1,20 +1,35 @@
 import express from "express";
 import fetch from "node-fetch";
+import cors from "cors";
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+app.use(cors());
+app.use(express.json());
 
+// Proxy endpoint
 app.get("/proxy", async (req, res) => {
-  const { url } = req.query;
-  if (!url) return res.status(400).send("Missing ?url parameter");
+  const targetUrl = req.query.url;
+  if (!targetUrl) {
+    return res.status(400).json({ error: "Missing 'url' parameter" });
+  }
+
   try {
-    const response = await fetch(url);
-    const data = await response.text();
-    res.set("Content-Type", "application/json");
-    res.send(data);
+    const response = await fetch(targetUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Accept": "application/json, text/plain, /",
+        "Referer": "https://gmgn.ai/",
+        "Origin": "https://gmgn.ai"
+      },
+    });
+
+    const text = await response.text();
+    res.status(response.status).send(text);
   } catch (err) {
-    res.status(500).send({ error: err.message });
+    console.error("Proxy error:", err);
+    res.status(502).json({ error: "Bad Gateway", details: err.message });
   }
 });
 
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(Proxy running on port ${PORT}));
